@@ -2,12 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:uuid/uuid.dart';
+import 'base_page.dart'; // Import the BasePage widget
 
 class CartDetailsPage extends StatefulWidget {
   final String userId;
   final String username;
 
-  const CartDetailsPage({super.key, required this.userId, required this.username});
+  const CartDetailsPage({
+    super.key,
+    required this.userId,
+    required this.username,
+  });
 
   @override
   CartDetailsPageState createState() => CartDetailsPageState();
@@ -27,7 +32,9 @@ class CartDetailsPageState extends State<CartDetailsPage> {
   Future<void> fetchCartItems() async {
     try {
       final response = await http.post(
-        Uri.parse('https://flutter.zuasoko.com/display_cart_items.php'),
+        Uri.parse(
+          'https://test.zuasoko.com/cart_items',
+        ), // <-- Use correct endpoint here
         body: {'user_id': widget.userId},
       );
 
@@ -36,9 +43,14 @@ class CartDetailsPageState extends State<CartDetailsPage> {
 
         if (data is List) {
           setState(() {
-            cartItems = data.map((item) => Map<String, dynamic>.from(item)).toList();
-            totalAmount = cartItems.fold(0.0, (sum, item) => 
-              sum + (double.tryParse(item['price'].toString()) ?? 0) * (int.tryParse(item['quantity'].toString()) ?? 0)
+            cartItems =
+                data.map((item) => Map<String, dynamic>.from(item)).toList();
+            totalAmount = cartItems.fold(
+              0.0,
+              (sum, item) =>
+                  sum +
+                  (double.tryParse(item['price'].toString()) ?? 0) *
+                      (int.tryParse(item['quantity'].toString()) ?? 0),
             );
             isLoading = false;
           });
@@ -48,7 +60,9 @@ class CartDetailsPageState extends State<CartDetailsPage> {
           });
         }
       } else {
-        debugPrint('Failed to fetch cart items. Status code: ${response.statusCode}');
+        debugPrint(
+          'Failed to fetch cart items. Status code: ${response.statusCode}',
+        );
         setState(() {
           isLoading = false;
         });
@@ -66,19 +80,22 @@ class CartDetailsPageState extends State<CartDetailsPage> {
 
     String orderId = const Uuid().v4(); // Generate a unique order ID
 
-    List<Map<String, dynamic>> orderProducts = cartItems.map((item) {
-      return {
-        'order_id': orderId,
-        'product_id': item['product_id'],
-        'user_id': widget.userId,
-        'total_amount': (double.tryParse(item['price'].toString()) ?? 0) * (int.tryParse(item['quantity'].toString()) ?? 0),
-        'order_status': 'confirmed'
-      };
-    }).toList();
+    List<Map<String, dynamic>> orderProducts =
+        cartItems.map((item) {
+          return {
+            'order_id': orderId,
+            'product_id': item['product_id'],
+            'user_id': widget.userId,
+            'total_amount':
+                (double.tryParse(item['price'].toString()) ?? 0) *
+                (int.tryParse(item['quantity'].toString()) ?? 0),
+            'order_status': 'confirmed',
+          };
+        }).toList();
 
     try {
       final response = await http.post(
-        Uri.parse('https://flutter.zuasoko.com/save_confirmed_orders.php'),
+        Uri.parse('https://test.zuasoko.com/save-confirmed-orders'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode(orderProducts),
       );
@@ -97,54 +114,70 @@ class CartDetailsPageState extends State<CartDetailsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Cart Details')),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : cartItems.isEmpty
-              ? const Center(child: Text("Your cart is empty.", style: TextStyle(fontSize: 16)))
+    return BasePage(
+      title: "Cart Details", // Set the title for the app bar
+      child:
+          isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : cartItems.isEmpty
+              ? const Center(
+                child: Text(
+                  "Your cart is empty.",
+                  style: TextStyle(fontSize: 16),
+                ),
+              )
               : Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    children: [
-                      Expanded(
-                        child: ListView.builder(
-                          itemCount: cartItems.length,
-                          itemBuilder: (context, index) {
-                            var item = cartItems[index];
-                            return ListTile(
-                              leading: item['image'] != null
-                                  ? Image.network(
-                                      "https://flutter.zuasoko.com/${item['image']}",
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: cartItems.length,
+                        itemBuilder: (context, index) {
+                          var item = cartItems[index];
+                          return ListTile(
+                            leading:
+                                item['image'] != null
+                                    ? Image.network(
+                                      "https://test.zuasoko.com/product_images/${item['image']}",
                                       width: 50,
                                       height: 50,
                                       fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.image_not_supported),
+                                      errorBuilder:
+                                          (context, error, stackTrace) =>
+                                              const Icon(
+                                                Icons.image_not_supported,
+                                              ),
                                     )
-                                  : const Icon(Icons.image),
-                              title: Text(item['description']),
-                              subtitle: Text("Quantity: ${item['quantity']}"),
-                              trailing: Text(
-                                "\$${(double.tryParse(item['price'].toString()) ?? 0 * (int.tryParse(item['quantity'].toString()) ?? 0)).toStringAsFixed(2)}",
-                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                    : const Icon(Icons.image),
+                            title: Text(item['description']),
+                            subtitle: Text("Quantity: ${item['quantity']}"),
+                            trailing: Text(
+                              "\$${(double.tryParse(item['price'].toString()) ?? 0 * (int.tryParse(item['quantity'].toString()) ?? 0)).toStringAsFixed(2)}",
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
                               ),
-                            );
-                          },
-                        ),
+                            ),
+                          );
+                        },
                       ),
-                      const SizedBox(height: 20),
-                      Text(
-                        "Total: \$${totalAmount.toStringAsFixed(2)}",
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      "Total: \$${totalAmount.toStringAsFixed(2)}",
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
                       ),
-                      const SizedBox(height: 20),
-                      ElevatedButton(
-                        onPressed: confirmOrder,
-                        child: const Text('Confirm Order'),
-                      ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: confirmOrder,
+                      child: const Text('Confirm Order'),
+                    ),
+                  ],
                 ),
+              ),
     );
   }
 }

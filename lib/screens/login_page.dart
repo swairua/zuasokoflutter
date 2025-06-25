@@ -8,6 +8,7 @@ import 'farmer_dashboard_page.dart';
 import 'driver_dashboard_page.dart';
 import 'customer_dashboard_page.dart';
 import 'dashboard_page.dart';
+import 'base_page.dart'; // Import the BasePage widget
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -25,17 +26,43 @@ class LoginPageState extends State<LoginPage> {
     setState(() => isLoading = true);
     print("🟡 Debug: Login button pressed");
 
-    var url = Uri.parse("https://flutter.zuasoko.com/flutterlogin.php");
-    var body = {
-      'username': usernameController.text.trim(),
-      'password': passwordController.text.trim(),
-    };
+    final String username = usernameController.text.trim();
+    final String password = passwordController.text.trim();
+
+    print(
+      "📦 Debug: Username: $username, Password: ${password.isNotEmpty ? '***' : '[EMPTY]'}",
+    );
+
+    var url = Uri.parse("https://test.zuasoko.com/login");
+    var body = {'username': username, 'password': password};
+    var headers = {"Content-Type": "application/json"};
+
+    print("🌐 Sending POST to $url with headers $headers and body $body");
 
     try {
-      final response = await http.post(url, body: body);
+      final response = await http.post(
+        url,
+        headers: headers,
+        body: jsonEncode(body),
+      );
+
+      print("📥 Response status: ${response.statusCode}");
+      print("📥 Raw response body: ${response.body}");
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+        dynamic data;
+
+        try {
+          data = jsonDecode(response.body);
+        } catch (e) {
+          print("❌ JSON decode error: $e");
+          setState(() => isLoading = false);
+          showSnackbar("Server returned invalid response format.");
+          return;
+        }
+
+        print("✅ Parsed JSON: $data");
+
         setState(() => isLoading = false);
 
         if (data['status'] == 'success') {
@@ -44,69 +71,99 @@ class LoginPageState extends State<LoginPage> {
           prefs.setString('username', data['username']);
           prefs.setString('category', data['category']);
 
-          String userId = data['userId'].toString();
-          String username = data['username'];
-          String category = data['category'];
-
-          print("✅ Debug: Login success - userId: $userId, username: $username, category: $category");
+          print("🔐 Login successful. Saving user session.");
+          print(
+            "🧑‍💼 ID: ${data['userId']}, Username: ${data['username']}, Role: ${data['category']}",
+          );
 
           if (!mounted) return;
 
-          // Navigate based on user category
-          switch (category) {
+          switch (data['category']) {
             case 'farmer':
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (context) => FarmerDashboardPage(userId: userId, username: username)),
+                MaterialPageRoute(
+                  builder:
+                      (context) => FarmerDashboardPage(
+                        userId: data['userId'].toString(),
+                        username: data['username'],
+                      ),
+                ),
               );
               break;
             case 'driver':
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (context) => DriverDashboardPage(userId: userId, username: username)),
+                MaterialPageRoute(
+                  builder:
+                      (context) => DriverDashboardPage(
+                        userId: data['userId'].toString(),
+                        username: data['username'],
+                      ),
+                ),
               );
               break;
             case 'admin':
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (context) => DashboardPage(userId: userId, username: username)),
+                MaterialPageRoute(
+                  builder:
+                      (context) => DashboardPage(
+                        userId: data['userId'].toString(),
+                        username: data['username'],
+                      ),
+                ),
               );
               break;
             case 'customer':
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (context) => CustomerDashboardPage(userId: userId, username: username)),
+                MaterialPageRoute(
+                  builder:
+                      (context) => CustomerDashboardPage(
+                        userId: data['userId'].toString(),
+                        username: data['username'],
+                      ),
+                ),
               );
               break;
             default:
+              print("⚠️ Unknown role: ${data['category']}");
               Navigator.pushReplacementNamed(context, '/dashboard_page');
           }
         } else {
+          print("🚫 Login failed. Message: ${data['message']}");
           showSnackbar(data['message'] ?? "Invalid login credentials.");
         }
       } else {
-        throw Exception("Server error: ${response.statusCode}");
+        setState(() => isLoading = false);
+        print("❌ Server error: ${response.statusCode}");
+        showSnackbar("Server error: ${response.statusCode}");
       }
     } catch (e) {
       setState(() => isLoading = false);
-      showSnackbar("❌ Network error, please try again.");
+      print("❌ Network error during login: $e");
+      showSnackbar("❌ Network error: $e");
     }
   }
 
   void showSnackbar(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("Login")),
-      body: Padding(
+    return BasePage(
+      title: "Login", // Set the title for the app bar
+      child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            // Logo is added by the BasePage widget
             TextField(
               controller: usernameController,
               decoration: const InputDecoration(labelText: "Username"),
@@ -119,23 +176,26 @@ class LoginPageState extends State<LoginPage> {
             const SizedBox(height: 20),
             isLoading
                 ? const CircularProgressIndicator()
-                : ElevatedButton(
-                    onPressed: login,
-                    child: const Text("Login"),
-                  ),
+                : ElevatedButton(onPressed: login, child: const Text("Login")),
             const SizedBox(height: 10),
             TextButton(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const RegisterPage()),
-              ),
+              onPressed:
+                  () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const RegisterPage(),
+                    ),
+                  ),
               child: const Text("Register"),
             ),
             TextButton(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const ChangePasswordPage()),
-              ),
+              onPressed:
+                  () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ChangePasswordPage(),
+                    ),
+                  ),
               child: const Text("Change Password"),
             ),
           ],

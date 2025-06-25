@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'base_page.dart'; // Import the BasePage widget
 
 class ChangePasswordPage extends StatefulWidget {
   const ChangePasswordPage({super.key});
@@ -10,15 +11,22 @@ class ChangePasswordPage extends StatefulWidget {
 }
 
 class _ChangePasswordPageState extends State<ChangePasswordPage> {
-  TextEditingController usernameController = TextEditingController();
-  TextEditingController oldPasswordController = TextEditingController();
-  TextEditingController newPasswordController = TextEditingController();
+  final TextEditingController usernameController = TextEditingController();
+  final TextEditingController oldPasswordController = TextEditingController();
+  final TextEditingController newPasswordController = TextEditingController();
   bool isLoading = false;
 
   Future<void> changePassword() async {
+    if (usernameController.text.trim().isEmpty ||
+        oldPasswordController.text.trim().isEmpty ||
+        newPasswordController.text.trim().isEmpty) {
+      showSnackbar("❌ Please fill in all fields!");
+      return;
+    }
+
     setState(() => isLoading = true);
 
-    var url = Uri.parse("https://flutter.zuasoko.com/change_password.php");
+    var url = Uri.parse("https://test.zuasoko.com/change-password");
     var body = {
       'username': usernameController.text.trim(),
       'old_password': oldPasswordController.text.trim(),
@@ -27,10 +35,11 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
 
     try {
       final response = await http.post(url, body: body);
-      Map<String, dynamic> data = jsonDecode(response.body);
+      final Map<String, dynamic> data = jsonDecode(response.body);
 
       setState(() => isLoading = false);
       showSnackbar(data['message']);
+
       if (data['status'] == 'success') {
         Navigator.pop(context);
       }
@@ -48,12 +57,11 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("Change Password")),
-      body: Padding(
+    return BasePage(
+      title: "Change Password",
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             TextField(
               controller: usernameController,

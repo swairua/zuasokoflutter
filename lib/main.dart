@@ -29,37 +29,38 @@ class MyApp extends StatelessWidget {
             case '/farmer_dashboard_page':
               return MaterialPageRoute(
                 builder: (context) => FarmerDashboardPage(
-                  userId: args['userId'],
-                  username: args['username'],
+                  userId: args['userId'] ?? '',
+                  username: args['username'] ?? '',
                 ),
               );
 
             case '/driver_dashboard_page':
               return MaterialPageRoute(
                 builder: (context) => DriverDashboardPage(
-                  userId: args['userId'],
-                  username: args['username'],
+                  userId: args['userId'] ?? '',
+                  username: args['username'] ?? '',
                 ),
               );
 
             case '/customer_dashboard_page':
               return MaterialPageRoute(
                 builder: (context) => CustomerDashboardPage(
-                  userId: args['userId'],
-                  username: args['username'],
+                  userId: args['userId'] ?? '',
+                  username: args['username'] ?? '',
                 ),
               );
 
             case '/dashboard_page':
               return MaterialPageRoute(
                 builder: (context) => DashboardPage(
-                  userId: args['userId'],
-                  username: args['username'],
+                  userId: args['userId'] ?? '',
+                  username: args['username'] ?? '',
                 ),
               );
           }
         }
 
+        // Fallback: if no matching route found or arguments missing, return null
         return null;
       },
     );
