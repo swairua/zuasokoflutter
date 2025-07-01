@@ -66,7 +66,8 @@ class CustomerDashboardPageState extends State<CustomerDashboardPage> {
 
   /// Show quantity input dialog
   void promptQuantityInput(String productId) {
-    TextEditingController quantityController = TextEditingController(text: "1");
+    TextEditingController quantityController =
+        TextEditingController(text: "1");
 
     showDialog(
       context: context,
@@ -122,7 +123,10 @@ class CustomerDashboardPageState extends State<CustomerDashboardPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Marketplace')),
+      appBar: AppBar(
+        title: const Text('Marketplace'),
+        automaticallyImplyLeading: true, // Ensures drawer icon appears
+      ),
       drawer: Drawer(
         child: ListView(
           padding: EdgeInsets.zero,
@@ -142,11 +146,10 @@ class CustomerDashboardPageState extends State<CustomerDashboardPage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder:
-                        (context) => CartDetailsPage(
-                          userId: widget.userId,
-                          username: widget.username,
-                        ),
+                    builder: (context) => CartDetailsPage(
+                      userId: widget.userId,
+                      username: widget.username,
+                    ),
                   ),
                 );
               },
@@ -156,100 +159,107 @@ class CustomerDashboardPageState extends State<CustomerDashboardPage> {
               leading: const Icon(Icons.logout),
               title: const Text('Logout'),
               onTap: () {
-                Navigator.of(
-                  context,
-                ).pushNamedAndRemoveUntil('/', (route) => false);
+                Navigator.of(context).pushNamedAndRemoveUntil(
+                  '/',
+                  (route) => false,
+                );
               },
             ),
           ],
         ),
       ),
-      body:
-          products.isEmpty
-              ? const Center(child: CircularProgressIndicator())
-              : GridView.builder(
-                padding: const EdgeInsets.all(10),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10,
-                  childAspectRatio: 0.7,
-                ),
-                itemCount: products.length,
-                itemBuilder: (context, index) {
-                  var product = products[index];
-                  String productId = product['id'].toString();
-
-                  return Card(
-                    elevation: 4,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Expanded(
-                          child: ClipRRect(
-                            borderRadius: const BorderRadius.only(
-                              topLeft: Radius.circular(10),
-                              topRight: Radius.circular(10),
-                            ),
-                            child: Image.network(
-                                product['image'],
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Image.asset(
-                                    'assets/images/placeholder.png', // Make sure you add this to pubspec.yaml
-                                    fit: BoxFit.cover,
-                                    width: double.infinity,
-                                  );
-                                },
-                              )
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Text(
-                                product['description'],
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 5),
-                              Text(
-                                "\$${product['retail_price']}",
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.green,
-                                ),
-                              ),
-                              const SizedBox(height: 5),
-                              ElevatedButton(
-                                onPressed: () => promptQuantityInput(productId),
-                                style: ElevatedButton.styleFrom(
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  backgroundColor: Colors.blueAccent,
-                                ),
-                                child: const Text('Add to Cart'),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
+      body: products.isEmpty
+          ? const Center(child: CircularProgressIndicator())
+          : GridView.builder(
+              padding: const EdgeInsets.all(10),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+                childAspectRatio: 0.7,
               ),
+              itemCount: products.length,
+              itemBuilder: (context, index) {
+                var product = products[index];
+                String productId = product['id'].toString();
+
+                return Card(
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(10),
+                            topRight: Radius.circular(10),
+                          ),
+                          child: product['image'] != null &&
+                                  product['image'].toString().isNotEmpty
+                              ? Image.network(
+                                  product['image'],
+                                  fit: BoxFit.cover,
+                                  width: double.infinity,
+                                  errorBuilder:
+                                      (context, error, stackTrace) {
+                                    return Image.asset(
+                                      'assets/images/placeholder.png',
+                                      fit: BoxFit.cover,
+                                    );
+                                  },
+                                )
+                              : Image.asset(
+                                  'assets/images/placeholder.png',
+                                  fit: BoxFit.cover,
+                                ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Text(
+                              product['description'],
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 5),
+                            Text(
+                              "\$${product['retail_price']}",
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green,
+                              ),
+                            ),
+                            const SizedBox(height: 5),
+                            ElevatedButton(
+                              onPressed: () =>
+                                  promptQuantityInput(productId),
+                              style: ElevatedButton.styleFrom(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                backgroundColor: Colors.blueAccent,
+                              ),
+                              child: const Text('Add to Cart'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
       floatingActionButton: FloatingActionButton.extended(
         label: Text('View Cart ($cartQuantity)'),
         icon: const Icon(Icons.shopping_cart),
@@ -257,11 +267,10 @@ class CustomerDashboardPageState extends State<CustomerDashboardPage> {
           await Navigator.push(
             context,
             MaterialPageRoute(
-              builder:
-                  (context) => CartDetailsPage(
-                    userId: widget.userId,
-                    username: widget.username,
-                  ),
+              builder: (context) => CartDetailsPage(
+                userId: widget.userId,
+                username: widget.username,
+              ),
             ),
           );
           fetchCartQuantity(); // Refresh cart quantity

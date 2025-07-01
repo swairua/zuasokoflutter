@@ -156,7 +156,7 @@ class _AddUserPageState extends State<AddUserPage> {
               DropdownButtonFormField<String>(
                 value: selectedCategory,
                 items:
-                    ['Farmer', 'Admin', 'Customer'].map((String category) {
+                    ['Farmer', 'Admin', 'Driver'].map((String category) {
                       return DropdownMenuItem<String>(
                         value: category,
                         child: Text(category),

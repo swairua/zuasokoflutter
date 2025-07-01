@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'cart_details_page.dart';
-import 'base_page.dart'; // <-- Make sure this is imported
+import 'base_page.dart';
 
 class CustomerDashboardPage extends StatefulWidget {
   final String userId;
@@ -15,12 +15,16 @@ class CustomerDashboardPage extends StatefulWidget {
   });
 
   @override
-  _CustomerDashboardPageState createState() => _CustomerDashboardPageState();
+  State<CustomerDashboardPage> createState() => _CustomerDashboardPageState();
 }
 
 class _CustomerDashboardPageState extends State<CustomerDashboardPage> {
   List<Map<String, dynamic>> products = [];
   int cartQuantity = 0;
+  int currentPage = 1;
+  bool isLoadingMore = false;
+  bool allLoaded = false;
+  final ScrollController _scrollController = ScrollController();
   final String imageBaseUrl = "https://test.zuasoko.com/product_images/";
 
   @override
@@ -28,23 +32,40 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage> {
     super.initState();
     fetchProducts();
     fetchCartQuantity();
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 300 && !isLoadingMore && !allLoaded) {
+        fetchProducts();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> fetchProducts() async {
+    setState(() => isLoadingMore = true);
     try {
       final response = await http.get(
-        Uri.parse('https://test.zuasoko.com/sellable-items'),
+        Uri.parse('https://test.zuasoko.com/sellable-items?page=$currentPage'),
       );
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
-        setState(() {
-          products =
-              data.map((item) => Map<String, dynamic>.from(item)).toList();
-        });
+        if (data.isEmpty) {
+          setState(() => allLoaded = true);
+        } else {
+          setState(() {
+            products.addAll(data.map((item) => Map<String, dynamic>.from(item)));
+            currentPage++;
+          });
+        }
       }
     } catch (e) {
       debugPrint('Error fetching products: $e');
     }
+    setState(() => isLoadingMore = false);
   }
 
   Future<void> fetchCartQuantity() async {
@@ -73,8 +94,7 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage> {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         setState(() {
-          cartQuantity =
-              int.tryParse(data['cart_quantity'].toString()) ?? cartQuantity;
+          cartQuantity = int.tryParse(data['cart_quantity'].toString()) ?? cartQuantity;
         });
       }
     } catch (e) {
@@ -82,118 +102,159 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage> {
     }
   }
 
+  Drawer buildDrawer() {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          UserAccountsDrawerHeader(
+            accountName: Text(widget.username),
+            accountEmail: Text('User ID: ${widget.userId}'),
+            currentAccountPicture: const CircleAvatar(
+              child: Icon(Icons.person, size: 40),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.shopping_cart),
+            title: const Text('My Cart'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => CartDetailsPage(
+                    userId: widget.userId,
+                    username: widget.username,
+                  ),
+                ),
+              );
+            },
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.logout),
+            title: const Text('Logout'),
+            onTap: () {
+              Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return BasePage(
       title: 'Marketplace',
+      drawer: buildDrawer(),
       child: Stack(
         children: [
           products.isEmpty
               ? const Center(child: CircularProgressIndicator())
               : LayoutBuilder(
-                builder: (context, constraints) {
-                  int crossAxisCount = (constraints.maxWidth ~/ 180).clamp(
-                    2,
-                    4,
-                  );
-                  return GridView.builder(
-                    padding: const EdgeInsets.only(
-                      bottom: 80.0,
-                    ), // leave space for FAB
-                    itemCount: products.length,
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: crossAxisCount,
-                      childAspectRatio: 0.7,
-                      crossAxisSpacing: 8,
-                      mainAxisSpacing: 8,
-                    ),
-                    itemBuilder: (context, index) {
-                      var product = products[index];
+                  builder: (context, constraints) {
+                    int crossAxisCount = (constraints.maxWidth ~/ 180).clamp(2, 6);
+                    return GridView.builder(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.only(bottom: 100),
+                      itemCount: products.length + (isLoadingMore ? 1 : 0),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: crossAxisCount,
+                        childAspectRatio: 0.65,
+                        crossAxisSpacing: 10,
+                        mainAxisSpacing: 10,
+                      ),
+                      itemBuilder: (context, index) {
+                        if (index >= products.length) {
+                          return const Center(child: CircularProgressIndicator());
+                        }
 
-                      String? imageName = product['image'];
-                      String imageUrl =
-                          (imageName != null && imageName.isNotEmpty)
-                              ? "$imageBaseUrl$imageName"
-                              : "";
+                        var product = products[index];
+                        String? imageName = product['image'];
+                        String imageUrl = (imageName != null && imageName.isNotEmpty)
+                            ? (imageName.startsWith('http') ? imageName : "$imageBaseUrl$imageName")
+                            : "";
 
-                      String description =
-                          product['description'] ?? 'No description';
-                      String price =
-                          product['retail_price']?.toString() ?? '0.00';
-                      String productId = product['id']?.toString() ?? '0';
-                      return Card(
-                        elevation: 3,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Expanded(
-                              flex: 2,
-                              child:
-                                  imageUrl.isNotEmpty
-                                      ? ClipRRect(
-                                        borderRadius:
-                                            const BorderRadius.vertical(
-                                              top: Radius.circular(10),
-                                            ),
-                                        child: Image.network(
+                        String title = product['name'] ?? 'No name';
+                        String description = product['description'] ?? 'No description';
+                        String price = product['retail_price']?.toString() ?? '0.00';
+                        String productId = product['id']?.toString() ?? '0';
+
+                        return Card(
+                          elevation: 3,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Expanded(
+                                flex: 5,
+                                child: ClipRRect(
+                                  borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+                                  child: imageUrl.isNotEmpty
+                                      ? Image.network(
                                           imageUrl,
                                           fit: BoxFit.cover,
-                                        ),
-                                      )
+                                          errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, size: 50),
+                                        )
                                       : Container(
-                                        color: Colors.grey[300],
-                                        child: const Icon(
-                                          Icons.image,
-                                          size: 50,
-                                          color: Colors.grey,
+                                          color: Colors.grey[300],
+                                          child: const Icon(Icons.image, size: 50, color: Colors.grey),
                                         ),
-                                      ),
-                            ),
-                            Expanded(
-                              flex: 1,
-                              child: Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Column(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      description,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    Text(
-                                      "\$$price",
-                                      style: const TextStyle(
-                                        color: Colors.green,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                    SizedBox(
-                                      width: double.infinity,
-                                      child: ElevatedButton(
-                                        onPressed: () => addToCart(productId),
-                                        child: const Text('Add to Cart'),
-                                      ),
-                                    ),
-                                  ],
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
+                              Expanded(
+                                flex: 4,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        title,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      Text(
+                                        description,
+                                        style: const TextStyle(fontSize: 12),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        "\$$price",
+                                        style: const TextStyle(
+                                          color: Colors.green,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const Spacer(),
+                                      SizedBox(
+                                        width: double.infinity,
+                                        child: ElevatedButton(
+                                          onPressed: () => addToCart(productId),
+                                          child: const Text('Add to Cart'),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
           Positioned(
             right: 16,
             bottom: 16,
@@ -204,11 +265,10 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder:
-                        (context) => CartDetailsPage(
-                          userId: widget.userId,
-                          username: widget.username,
-                        ),
+                    builder: (context) => CartDetailsPage(
+                      userId: widget.userId,
+                      username: widget.username,
+                    ),
                   ),
                 );
               },

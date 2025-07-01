@@ -4,6 +4,8 @@ import 'farmer_wallet.dart';
 import 'farmer_transaction_summary.dart';
 import 'login_page.dart';
 import 'base_page.dart';
+import 'suggested_price_change.dart';
+
 
 class FarmerDashboardPage extends StatelessWidget {
   final String userId;
@@ -63,6 +65,20 @@ class FarmerDashboardPage extends StatelessWidget {
               );
             },
           ),
+          ListTile(
+            leading: const Icon(Icons.price_change),
+            title: const Text('Suggested Price Changes'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => SuggestedPriceChangePage(userId: userId),
+                ),
+              );
+            },
+          ),
+
           const Divider(),
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.red),

@@ -217,7 +217,7 @@ class DashboardPageState extends State<DashboardPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            debugPanel(),
+            // debugPanel(),
             const SizedBox(height: 20),
             Text(
               "Welcome, $username!",
