@@ -30,7 +30,7 @@ class DriverDashboardPage extends StatelessWidget {
           padding: EdgeInsets.zero,
           children: [
             DrawerHeader(
-              decoration: const BoxDecoration(color: Colors.blue),
+              decoration: const BoxDecoration(color: Color.fromARGB(255, 82, 180, 129)),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
